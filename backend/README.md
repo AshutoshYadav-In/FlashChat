@@ -30,6 +30,25 @@ Single-instance backend for FlashChat assignment using Express, Socket.io, and M
 
 npm start
 
+## Deploy on Render.com
+
+1. **New Web Service** → connect this repo.
+2. Set **Root Directory** to `backend` (or use the repo root [`render.yaml`](../render.yaml) Blueprint).
+3. **Build command:** `npm install`  
+4. **Start command:** `npm start`  
+5. **Health check path:** `/health` (optional; matches [`render.yaml`](../render.yaml)).
+
+**Environment variables** (Render dashboard):
+
+| Key | Value |
+|-----|--------|
+| `MONGO_URI` | MongoDB Atlas connection string |
+| `CLIENT_ORIGIN` | Deployed frontend URL (e.g. `https://your-frontend.onrender.com`) — must match the browser origin exactly for CORS and Socket.io |
+
+Do **not** set `PORT` on Render; the platform assigns it. The server listens on `0.0.0.0` and uses `process.env.PORT`.
+
+After deploy, use the service URL (e.g. `https://flashchat-backend.onrender.com`) as **`VITE_API_URL`** when building the frontend.
+
 ## Docker
 
 Build image:

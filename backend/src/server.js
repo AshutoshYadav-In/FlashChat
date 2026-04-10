@@ -10,8 +10,8 @@ const io = buildSocketServer(httpServer);
 const startServer = async () => {
   await connectDb(env.mongoUri);
 
-  httpServer.listen(env.port, () => {
-    console.log(`FlashChat backend listening on port ${env.port}`);
+  httpServer.listen(env.port, '0.0.0.0', () => {
+    console.log(`FlashChat backend listening on 0.0.0.0:${env.port}`);
   });
 };
 
