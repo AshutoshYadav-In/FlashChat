@@ -33,10 +33,10 @@ npm start
 ## Deploy on Render.com
 
 1. **New Web Service** → connect this repo.
-2. Set **Root Directory** to `backend` (or use the repo root [`render.yaml`](../render.yaml) Blueprint).
+2. Set **Root Directory** to `backend`.
 3. **Build command:** `npm install`  
 4. **Start command:** `npm start`  
-5. **Health check path:** `/health` (optional; matches [`render.yaml`](../render.yaml)).
+5. **Health check path:** `/health` (optional).
 
 **Environment variables** (Render dashboard):
 
@@ -47,7 +47,7 @@ npm start
 
 Do **not** set `PORT` on Render; the platform assigns it. The server listens on `0.0.0.0` and uses `process.env.PORT`.
 
-After deploy, use the service URL (e.g. `https://flashchat-backend.onrender.com`) as **`VITE_API_URL`** when building the frontend.
+After deploy, use the service URL (e.g. `https://flashchat-backend.onrender.com`) as **`VITE_API_URL`** when building the frontend (Render Static Site env). Then set **`CLIENT_ORIGIN`** on the backend to your **Static Site** URL and redeploy the backend so CORS allows the browser origin.
 
 ## Docker
 

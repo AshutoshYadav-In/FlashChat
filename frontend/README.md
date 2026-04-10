@@ -29,6 +29,20 @@ Default backend URL:
 2. Start frontend (`frontend/npm run dev`)
 3. Open frontend URL from Vite output (usually `http://localhost:5173`)
 
+## Deploy on Render.com (Static Site)
+
+1. Deploy the **backend** Web Service first and note its URL (e.g. `https://flashchat-backend.onrender.com`).
+2. Create a **Static Site** and connect the same repo.
+3. Set **Root Directory** to `frontend`.
+4. **Build command:** `npm install && npm run build`
+5. **Publish directory:** `dist`
+6. **Environment** (required at **build** time for Vite):
+   - `VITE_API_URL` = your backend URL (same value you use locally for the API/Socket.io server), **no trailing slash**
+
+7. After the static site URL is live, set the backend env **`CLIENT_ORIGIN`** to that exact frontend URL (scheme + host, no trailing slash) and **redeploy the backend** so CORS and Socket.io match.
+
+If you add client-side routes later, configure a **rewrite** in the Render Static Site settings (e.g. `/*` → `/index.html`) so refreshes work.
+
 ## Backend events consumed
 
 - `join_success`
