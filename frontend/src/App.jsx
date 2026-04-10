@@ -1,64 +1,84 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { socket } from './lib/socket';
+import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { bindSocketEvents, socket } from './lib/socket';
+import ChatScreen from './components/ChatScreen';
+import JoinScreen from './components/JoinScreen';
 import './styles.css';
 
-const formatTime = (isoDate) =>
-  new Date(isoDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
 function App() {
-  const [displayNameInput, setDisplayNameInput] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [isJoined, setIsJoined] = useState(false);
-  const [joinError, setJoinError] = useState('');
-  const [messageInput, setMessageInput] = useState('');
-  const [messageError, setMessageError] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [onlineCount, setOnlineCount] = useState(0);
-  const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const initialState = {
+    displayNameInput: '',
+    displayName: '',
+    isJoined: false,
+    joinError: '',
+    messageInput: '',
+    messageError: '',
+    messages: [],
+    onlineCount: 0,
+    connectionStatus: 'connecting',
+  };
+
+  const reducer = (state, action) => {
+    switch (action.type) {
+      case 'UPDATE_FIELDS':
+        return { ...state, ...action.payload };
+      case 'SET_HISTORY':
+        return { ...state, messages: action.payload || [] };
+      case 'ADD_MESSAGE':
+        if (state.messages.some((item) => item.id === action.payload.id)) {
+          return state;
+        }
+        return { ...state, messages: [...state.messages, action.payload] };
+      default:
+        return state;
+    }
+  };
+
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const {
+    displayNameInput,
+    displayName,
+    isJoined,
+    joinError,
+    messageInput,
+    messageError,
+    messages,
+    onlineCount,
+    connectionStatus,
+  } = state;
   const endRef = useRef(null);
 
   useEffect(() => {
-    const onConnect = () => setConnectionStatus('connected');
-    const onDisconnect = () => setConnectionStatus('disconnected');
+    const onConnect = () => dispatch({ type: 'UPDATE_FIELDS', payload: { connectionStatus: 'connected' } });
+    const onDisconnect = () =>
+      dispatch({ type: 'UPDATE_FIELDS', payload: { connectionStatus: 'disconnected' } });
     const onJoinSuccess = ({ displayName: joinedName }) => {
-      setDisplayName(joinedName);
-      setIsJoined(true);
-      setJoinError('');
-    };
-    const onJoinNameTaken = ({ message }) => setJoinError(message);
-    const onJoinError = ({ message }) => setJoinError(message);
-    const onChatHistory = ({ messages: history }) => setMessages(history || []);
-    const onChatMessage = (message) =>
-      setMessages((current) => {
-        if (current.some((item) => item.id === message.id)) {
-          return current;
-        }
-        return [...current, message];
+      dispatch({
+        type: 'UPDATE_FIELDS',
+        payload: { displayName: joinedName, isJoined: true, joinError: '' },
       });
-    const onUsersOnline = ({ count }) => setOnlineCount(count ?? 0);
-    const onMessageError = ({ message }) => setMessageError(message);
-
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-    socket.on('join_success', onJoinSuccess);
-    socket.on('join_name_taken', onJoinNameTaken);
-    socket.on('join_error', onJoinError);
-    socket.on('chat_history', onChatHistory);
-    socket.on('chat_message', onChatMessage);
-    socket.on('users_online', onUsersOnline);
-    socket.on('message_error', onMessageError);
-
-    return () => {
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-      socket.off('join_success', onJoinSuccess);
-      socket.off('join_name_taken', onJoinNameTaken);
-      socket.off('join_error', onJoinError);
-      socket.off('chat_history', onChatHistory);
-      socket.off('chat_message', onChatMessage);
-      socket.off('users_online', onUsersOnline);
-      socket.off('message_error', onMessageError);
     };
+    const onJoinNameTaken = ({ message }) =>
+      dispatch({ type: 'UPDATE_FIELDS', payload: { joinError: message } });
+    const onJoinError = ({ message }) =>
+      dispatch({ type: 'UPDATE_FIELDS', payload: { joinError: message } });
+    const onChatHistory = ({ messages: history }) => dispatch({ type: 'SET_HISTORY', payload: history });
+    const onChatMessage = (message) => dispatch({ type: 'ADD_MESSAGE', payload: message });
+    const onUsersOnline = ({ count }) =>
+      dispatch({ type: 'UPDATE_FIELDS', payload: { onlineCount: count ?? 0 } });
+    const onMessageError = ({ message }) =>
+      dispatch({ type: 'UPDATE_FIELDS', payload: { messageError: message } });
+
+    return bindSocketEvents({
+      connect: onConnect,
+      disconnect: onDisconnect,
+      join_success: onJoinSuccess,
+      join_name_taken: onJoinNameTaken,
+      join_error: onJoinError,
+      chat_history: onChatHistory,
+      chat_message: onChatMessage,
+      users_online: onUsersOnline,
+      message_error: onMessageError,
+    });
   }, []);
 
   useEffect(() => {
@@ -75,7 +95,7 @@ function App() {
 
   const handleJoin = (event) => {
     event.preventDefault();
-    setJoinError('');
+    dispatch({ type: 'UPDATE_FIELDS', payload: { joinError: '' } });
     socket.emit('join_chat', { displayName: displayNameInput.trim() });
   };
 
@@ -84,79 +104,39 @@ function App() {
     if (!messageInput.trim()) {
       return;
     }
-    setMessageError('');
+    dispatch({ type: 'UPDATE_FIELDS', payload: { messageError: '' } });
     socket.emit('chat_message', { text: messageInput.trim() });
-    setMessageInput('');
+    dispatch({ type: 'UPDATE_FIELDS', payload: { messageInput: '' } });
   };
 
   if (!isJoined) {
     return (
-      <div className="page">
-        <div className="card join-card">
-          <h1>FlashChat</h1>
-          <p className="subtitle">Enter your display name to join live chat.</p>
-          <form onSubmit={handleJoin} className="join-form">
-            <input
-              type="text"
-              value={displayNameInput}
-              onChange={(event) => setDisplayNameInput(event.target.value)}
-              placeholder="Display name"
-              maxLength={24}
-            />
-            <button type="submit">Join Chat</button>
-          </form>
-          {joinError && <p className="error-text">{joinError}</p>}
-          <p className="connection-text">Socket: {connectionStatus}</p>
-        </div>
-      </div>
+      <JoinScreen
+        displayNameInput={displayNameInput}
+        joinError={joinError}
+        connectionStatus={connectionStatus}
+        onJoin={handleJoin}
+        onDisplayNameChange={(event) =>
+          dispatch({ type: 'UPDATE_FIELDS', payload: { displayNameInput: event.target.value } })
+        }
+      />
     );
   }
 
   return (
-    <div className="page">
-      <div className="card chat-card">
-        <header className="chat-header">
-          <div>
-            <h2>FlashChat</h2>
-            <p className="subtitle">Signed in as {displayName}</p>
-          </div>
-          <div className="header-stats">
-            <span className="badge">Users Online: {onlineCount}</span>
-            <span className={`badge ${connectionStatus !== 'connected' ? 'warn' : ''}`}>
-              {connectionStatus}
-            </span>
-          </div>
-        </header>
-
-        <section className="messages">
-          {sortedMessages.map((message) => {
-            const mine = message.displayName === displayName;
-            return (
-              <article key={message.id} className={`message ${mine ? 'mine' : ''}`}>
-                <div className="meta">
-                  <strong>{message.displayName}</strong>
-                  <span>{formatTime(message.createdAt)}</span>
-                </div>
-                <p>{message.text}</p>
-              </article>
-            );
-          })}
-          <div ref={endRef} />
-        </section>
-
-        <form onSubmit={handleSend} className="message-form">
-          <input
-            type="text"
-            value={messageInput}
-            onChange={(event) => setMessageInput(event.target.value)}
-            maxLength={500}
-            placeholder="Type a message..."
-          />
-          <button type="submit">Send</button>
-        </form>
-        {messageError && <p className="error-text">{messageError}</p>}
-      </div>
-    </div>
+    <ChatScreen
+      displayName={displayName}
+      onlineCount={onlineCount}
+      connectionStatus={connectionStatus}
+      messages={sortedMessages}
+      endRef={endRef}
+      messageInput={messageInput}
+      messageError={messageError}
+      onSend={handleSend}
+      onMessageInputChange={(event) =>
+        dispatch({ type: 'UPDATE_FIELDS', payload: { messageInput: event.target.value } })
+      }
+    />
   );
 }
 
