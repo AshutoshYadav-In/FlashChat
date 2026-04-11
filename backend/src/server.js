@@ -3,20 +3,30 @@ const app = require('./app');
 const { env } = require('./config/env');
 const { connectDb, closeDb } = require('./config/db');
 const { buildSocketServer } = require('./socket');
+const { startSelfHealthPing, stopSelfHealthPing } = require('./lib/keepAlive');
 
 const httpServer = http.createServer(app);
 const io = buildSocketServer(httpServer);
+
+let keepAliveTimer = null;
 
 const startServer = async () => {
   await connectDb(env.mongoUri);
 
   httpServer.listen(env.port, '0.0.0.0', () => {
     console.log(`FlashChat backend listening on 0.0.0.0:${env.port}`);
+      keepAliveTimer = startSelfHealthPing(env.port, env.keepAliveIntervalMs);
+      console.log(
+        `Self health ping enabled every ${env.keepAliveIntervalMs}ms (set KEEP_ALIVE_ENABLED=false to disable)`
+      );
   });
 };
 
 const shutdown = async (signal) => {
   console.log(`Received ${signal}, shutting down gracefully...`);
+
+  stopSelfHealthPing(keepAliveTimer);
+  keepAliveTimer = null;
 
   io.close();
 

@@ -12,6 +12,7 @@ const env = {
   maxMessageLength: Number(process.env.MAX_MESSAGE_LENGTH) || 500,
   messageWindowMs: Number(process.env.MESSAGE_WINDOW_MS) || 10000,
   messageRateLimit: Number(process.env.MESSAGE_RATE_LIMIT) || 8,
+  keepAliveIntervalMs: Number(process.env.KEEP_ALIVE_INTERVAL_MS) || 120000,
 };
 
 module.exports = { env };
