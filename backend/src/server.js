@@ -15,10 +15,8 @@ const startServer = async () => {
 
   httpServer.listen(env.port, '0.0.0.0', () => {
     console.log(`FlashChat backend listening on 0.0.0.0:${env.port}`);
-      keepAliveTimer = startSelfHealthPing(env.port, env.keepAliveIntervalMs);
-      console.log(
-        `Self health ping enabled every ${env.keepAliveIntervalMs}ms (set KEEP_ALIVE_ENABLED=false to disable)`
-      );
+    keepAliveTimer = startSelfHealthPing(env.port, env.keepAliveIntervalMs);
+    console.log(`Self health ping every ${env.keepAliveIntervalMs}ms (see backend README)`);
   });
 };
 
